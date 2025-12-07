@@ -1,0 +1,5 @@
+# dbt build artifacts
+target/
+dbt_modules/
+logs/
+.env
