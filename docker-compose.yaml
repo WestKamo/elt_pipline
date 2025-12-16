@@ -13,6 +13,8 @@ services:
       POSTGRES_PASSWORD: secret
     volumes:
       - ./source_db_init/init.sql:/docker-entrypoint-initdb.d/init.sql
+      # Added named volume for performance
+      - source_pg_data:/var/lib/postgresql/data
 
   destination_postgres:
     image: postgres:15
@@ -24,11 +26,14 @@ services:
       POSTGRES_DB: destination_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: secret
+    volumes:
+      # Added named volume to fix the crash
+      - dest_pg_data:/var/lib/postgresql/data
 
   elt_script:
     build:
-      context: ./elt_script # Directory containing the Dockerfile and elt_script.py
-      dockerfile: Dockerfile # Name of the Dockerfile, if it's something other than "Dockerfile", specify here
+      context: ./elt_script
+      dockerfile: Dockerfile
     command: ['python', 'elt_script.py']
     networks:
       - elt_network
@@ -36,6 +41,24 @@ services:
       - source_postgres
       - destination_postgres
 
+  dbt:
+    image: ghcr.io/dbt-labs/dbt-postgres:latest    # official dbt Postgres image
+    networks:
+      - elt_network
+    volumes:
+      - ./custom_postgres:/usr/app                 # mount your dbt project
+      - ~/.dbt:/root/.dbt                          # mount your dbt profiles.yml
+    working_dir: /usr/app
+    depends_on:
+      - source_postgres
+      - destination_postgres
+    command: ["dbt", "build", "--full-refresh"]
+
 networks:
   elt_network:
     driver: bridge
+
+# This section creates the fast internal storage
+volumes:
+  source_pg_data:
+  dest_pg_data:
