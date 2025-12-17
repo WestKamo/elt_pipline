@@ -1,35 +1,101 @@
-# Custom ELT Project
+🏭 The Containerized Data Factory
+A Full-Stack ELT Pipeline built with Docker, PostgreSQL, dbt, and Apache Airflow.
 
-This repository contains a custom Extract, Load, Transform (ELT) project that utilizes Docker and PostgreSQL to demonstrate a simple ELT process.
+Welcome to my data engineering playground! What started as a simple python script to move data between two databases has evolved into a robust, orchestrated data platform. I built this to master the fundamentals of modern data infrastructure—handling everything from raw container networking to complex transformation logic.
 
-## Repository Structure
+🚀 What's Under the Hood?
+This isn't just a copy-paste project. It's a fully integrated stack simulating a real-world data environment.
 
-1. **docker-compose.yaml**: This file contains the configuration for Docker Compose, which is used to orchestrate multiple Docker containers. It defines three services:
-   - `source_postgres`: The source PostgreSQL database.
-   - `destination_postgres`: The destination PostgreSQL database.
-   - `elt_script`: The service that runs the ELT script.
+🐳 Docker & Docker Compose: The backbone. Everything runs in isolated containers with a custom internal network (elt_network).
 
-2. **elt_script/Dockerfile**: This Dockerfile sets up a Python environment and installs the PostgreSQL client. It also copies the ELT script into the container and sets it as the default command.
+🐘 PostgreSQL (x2): A "Source" DB (simulating a production app) and a "Destination" DB (our Data Warehouse).
 
-3. **elt_script/elt_script.py**: This Python script performs the ELT process. It waits for the source PostgreSQL database to become available, then dumps its data to a SQL file and loads this data into the destination PostgreSQL database.
+🐍 Python: A custom ELT script acting as the "delivery driver," extracting raw data and loading it into the warehouse.
 
-4. **source_db_init/init.sql**: This SQL script initializes the source database with sample data. It creates tables for users, films, film categories, actors, and film actors, and inserts sample data into these tables.
+✨ dbt (Data Build Tool): The transformation layer. Once data arrives, dbt cleans it, joins tables, and runs tests to ensure quality.
 
-## How It Works
+🌬️ Apache Airflow: The orchestrator. Instead of fragile cron jobs, I use Airflow DAGs and DockerOperators to manage dependencies and schedule the entire workflow.
 
-1. **Docker Compose**: Using the `docker-compose.yaml` file, three Docker containers are spun up:
-   - A source PostgreSQL database with sample data.
-   - A destination PostgreSQL database.
-   - A Python environment that runs the ELT script.
+🛠️ The Architecture
+Extraction & Loading (EL):
 
-2. **ELT Process**: The `elt_script.py` waits for the source PostgreSQL database to become available. Once it's available, the script uses `pg_dump` to dump the source database to a SQL file. Then, it uses `psql` to load this SQL file into the destination PostgreSQL database.
+A custom Python script waits for the source_db to initialize.
 
-3. **Database Initialization**: The `init.sql` script initializes the source database with sample data. It creates several tables and populates them with sample data.
+It uses pg_dump and psql to stream data directly to the destination_db.
 
-## Getting Started
+Challenge Solved: Optimized for WSL2 performance using Named Volumes to prevent I/O bottlenecks and timeouts.
 
-1. Ensure you have Docker and Docker Compose installed on your machine.
-2. Clone this repository.
-3. Navigate to the repository directory and run `docker-compose up`.
-4. Once all containers are up and running, the ELT process will start automatically.
-5. After the ELT process completes, you can access the source and destination PostgreSQL databases on ports 5433 and 5434, respectively.
+Transformation (T):
+
+dbt takes over once the data lands.
+
+configured sources.yml to treat the destination DB as the source of truth (solving cross-database querying limitations).
+
+Includes custom SQL models (stg_users, film_ratings_summary), generic tests, and Jinja macros for reusable logic.
+
+Orchestration:
+
+Airflow manages the lifecycle.
+
+It spins up the Python container ➡️ Waits for success ➡️ Spins up the dbt container.
+
+If any step fails, the pipeline stops and alerts (no more silent failures!).
+
+📂 Repository Structure
+Plaintext
+
+custom-elt-project-main/
+├── dags/                  # Airflow DAGs (The "Manager" scripts)
+│   └── elt_dag.py         # Defines the task order: Python Script -> dbt
+├── custom_postgres/       # The dbt Project (The "Chef")
+│   ├── models/            # SQL Transformations (Staging & Marts)
+│   ├── macros/            # Reusable SQL functions
+│   └── profiles.yml       # Connection configs
+├── elt_script/            # The Extraction Script (The "Driver")
+│   ├── Dockerfile         # Custom image definition
+│   └── elt_script.py      # The logic to move data
+├── source_db_init/        # Initial seed data for the source DB
+└── docker-compose.yaml    # The Master Blueprint
+⚡ How to Run It
+Prerequisites: Docker and Docker Compose.
+
+Clone the repo:
+
+Bash
+
+git clone <your-repo-url>
+cd custom-elt-project-main
+The "WSL Hack" (If you are on Windows/WSL2): Airflow needs permission to talk to the Docker daemon.
+
+Bash
+
+sudo chmod 666 /var/run/docker.sock
+Launch the Stack: Build the images and spin up the containers.
+
+Bash
+
+docker-compose up -d --build
+Access the Airflow UI:
+
+Go to: http://localhost:8080
+
+User: airflow | Pass: airflow
+
+Turn the toggle ON for elt_and_dbt_pipeline and click the Play button.
+
+Watch the Magic: Go to the Graph View in Airflow. You'll see the system automatically:
+
+✅ Provision a container to move data.
+
+✅ Provision a container to run dbt transformations.
+
+✅ Mark the job as "Success".
+
+🧠 Key Learnings & Features
+Race Conditions: Solved the "chicken and egg" problem where the script would run before the database was ready using Airflow dependencies (and Healthchecks).
+
+Data Quality: Implemented dbt tests to catch null values and referential integrity issues before they hit the dashboard.
+
+Infrastructure as Code: The entire environment—from database credentials to Airflow connections—is defined in code, making it reproducible on any machine.
+
+Built with ❤️ and a lot of coffee by [Phindile Ivy].
