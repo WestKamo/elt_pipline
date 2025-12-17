@@ -52,3 +52,48 @@ custom-elt-project-main/
 │   └── elt_script.py      # The logic to move data
 ├── source_db_init/        # Initial seed data for the source DB
 └── docker-compose.yaml    # The Master Blueprint
+
+⚡ How to Run It
+Prerequisites: Docker and Docker Compose.
+
+1. Clone the repo
+Bash
+
+git clone <your-repo-url>
+cd custom-elt-project-main
+2. The "WSL Hack" (Windows Users Only)
+If you are running this on WSL2, Airflow needs permission to talk to the Docker daemon. Run this command:
+
+Bash
+
+sudo chmod 666 /var/run/docker.sock
+3. Launch the Stack
+Build the images and spin up the containers.
+
+Bash
+
+docker-compose up -d --build
+4. Access the Airflow UI
+Open your browser to: http://localhost:8080
+
+Username: airflow
+
+Password: airflow
+
+5. Trigger the Pipeline
+Find the DAG named elt_and_dbt_pipeline.
+
+Toggle the switch to Unpause it (turn it Blue).
+
+Click the Play Button (▶️) to trigger the run.
+
+Go to the Graph View to watch the containers spin up and down in real-time!
+
+🧠 Key Learnings
+Race Conditions: Solved the "chicken and egg" problem where the script would run before the database was ready using Airflow dependencies (and Healthchecks).
+
+Data Quality: Implemented dbt tests to catch null values and referential integrity issues before they hit the dashboard.
+
+Infrastructure as Code: The entire environment—from database credentials to Airflow connections—is defined in code, making it reproducible on any machine.
+
+Built with ❤️ and a lot of coffee by Phindile Ivy 
